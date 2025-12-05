@@ -47,9 +47,21 @@ class Server {
     });
     this.app.use(limiter);
 
-    // CORS configuration - Allow all origins
+    // CORS configuration - Allow specific origins for credentials
     this.app.use((req, res, next) => {
-      res.header("Access-Control-Allow-Origin", "*");
+      const allowedOrigins = [
+        "https://craftopiadecors.netlify.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+      ];
+      
+      const origin = req.headers.origin;
+      if (origin && allowedOrigins.includes(origin)) {
+        res.header("Access-Control-Allow-Origin", origin);
+      }
+      
       res.header("Access-Control-Allow-Credentials", "true");
       res.header(
         "Access-Control-Allow-Headers",
