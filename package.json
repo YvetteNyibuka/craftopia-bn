@@ -24,7 +24,8 @@
   "author": "Craftopia Team",
   "license": "ISC",
   "engines": {
-    "node": ">=16.0.0"
+    "node": "18.x",
+    "npm": ">=8.0.0"
   },
   "dependencies": {
     "@types/multer": "^2.0.0",
