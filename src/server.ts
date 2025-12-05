@@ -54,7 +54,12 @@ class Server {
         credentials: true,
         optionsSuccessStatus: 200,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "X-Requested-With",
+          "Accept",
+        ],
       })
     );
 
