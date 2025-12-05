@@ -47,37 +47,14 @@ class Server {
     });
     this.app.use(limiter);
 
-    // CORS configuration
-    const allowedOrigins = process.env.FRONTEND_URL?.split(",").map(url => url.trim()) || [];
-    
-    // Add localhost origins for development
-    const developmentOrigins = [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:5173",
-    ];
-    
-    // Combine all origins
-    const allAllowedOrigins = [...allowedOrigins, ...developmentOrigins];
-
+    // CORS configuration - Allow all origins
     this.app.use(
       cors({
-        origin: (origin, callback) => {
-          // Allow requests with no origin (like mobile apps or curl requests)
-          if (!origin) return callback(null, true);
-          
-          if (allAllowedOrigins.includes(origin)) {
-            return callback(null, true);
-          }
-          
-          const error = new Error(`The CORS policy for this site does not allow access from the specified Origin: ${origin}`);
-          return callback(error, false);
-        },
+        origin: true,
         credentials: true,
         optionsSuccessStatus: 200,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
       })
     );
 
