@@ -1,0 +1,278 @@
+import { Request, Response, NextFunction } from "express";
+import Joi from "joi";
+import { errorResponse } from "../utils";
+
+/**
+ * Generic validation middleware factory
+ */
+export const validate = (schema: Joi.ObjectSchema) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const { error, value } = schema.validate(req.body, {
+      abortEarly: false,
+      allowUnknown: false,
+      stripUnknown: true,
+    });
+
+    if (error) {
+      const errorDetails = error.details
+        .map((detail) => detail.message)
+        .join(", ");
+      res.status(400).json(errorResponse("Validation error", errorDetails));
+      return;
+    }
+
+    req.body = value;
+    next();
+  };
+};
+
+/**
+ * Query parameters validation middleware
+ */
+export const validateQuery = (schema: Joi.ObjectSchema) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const { error, value } = schema.validate(req.query, {
+      abortEarly: false,
+      allowUnknown: true,
+      stripUnknown: true,
+    });
+
+    if (error) {
+      const errorDetails = error.details
+        .map((detail) => detail.message)
+        .join(", ");
+      res
+        .status(400)
+        .json(errorResponse("Query validation error", errorDetails));
+      return;
+    }
+
+    req.query = value;
+    next();
+  };
+};
+
+/**
+ * MongoDB ObjectId validation middleware
+ */
+export const validateObjectId = (paramName: string = "id") => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const id = req.params[paramName];
+
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      res.status(400).json(errorResponse("Invalid ID format"));
+      return;
+    }
+
+    next();
+  };
+};
+
+// Common validation schemas
+export const authSchemas = {
+  register: Joi.object({
+    firstName: Joi.string().trim().min(1).max(50).required().messages({
+      "string.empty": "First name is required",
+      "string.max": "First name cannot exceed 50 characters",
+    }),
+    lastName: Joi.string().trim().min(1).max(50).required().messages({
+      "string.empty": "Last name is required",
+      "string.max": "Last name cannot exceed 50 characters",
+    }),
+    email: Joi.string().email().lowercase().trim().required().messages({
+      "string.email": "Please provide a valid email address",
+      "string.empty": "Email is required",
+    }),
+    password: Joi.string()
+      .min(6)
+      .max(128)
+      .required()
+      .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])"))
+      .messages({
+        "string.min": "Password must be at least 6 characters long",
+        "string.max": "Password cannot exceed 128 characters",
+        "string.pattern.base":
+          "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+        "string.empty": "Password is required",
+      }),
+    confirmPassword: Joi.any().valid(Joi.ref("password")).required().messages({
+      "any.only": "Confirm password must match password",
+      "any.required": "Confirm password is required",
+    }),
+  }),
+
+  login: Joi.object({
+    email: Joi.string().email().lowercase().trim().required().messages({
+      "string.email": "Please provide a valid email address",
+      "string.empty": "Email is required",
+    }),
+    password: Joi.string().min(1).required().messages({
+      "string.empty": "Password is required",
+    }),
+  }),
+};
+
+export const categorySchemas = {
+  create: Joi.object({
+    name: Joi.string().trim().min(1).max(100).required().messages({
+      "string.empty": "Category name is required",
+      "string.max": "Category name cannot exceed 100 characters",
+    }),
+    description: Joi.string().trim().max(500).optional().messages({
+      "string.max": "Description cannot exceed 500 characters",
+    }),
+    icon: Joi.string().trim().optional(),
+  }),
+
+  update: Joi.object({
+    name: Joi.string().trim().min(1).max(100).optional().messages({
+      "string.empty": "Category name cannot be empty",
+      "string.max": "Category name cannot exceed 100 characters",
+    }),
+    description: Joi.string().trim().max(500).allow("").optional().messages({
+      "string.max": "Description cannot exceed 500 characters",
+    }),
+    icon: Joi.string().trim().allow("").optional(),
+    isActive: Joi.boolean().optional(),
+  }),
+};
+
+export const decorSchemas = {
+  create: Joi.object({
+    name: Joi.string().trim().min(1).max(200).required().messages({
+      "string.empty": "Decor name is required",
+      "string.max": "Decor name cannot exceed 200 characters",
+    }),
+    description: Joi.string().trim().min(1).max(2000).required().messages({
+      "string.empty": "Description is required",
+      "string.max": "Description cannot exceed 2000 characters",
+    }),
+    category: Joi.string().hex().length(24).required().messages({
+      "string.empty": "Category is required",
+      "string.hex": "Invalid category ID",
+      "string.length": "Invalid category ID",
+    }),
+    price: Joi.number().positive().precision(2).required().messages({
+      "number.positive": "Price must be a positive number",
+      "any.required": "Price is required",
+    }),
+    originalPrice: Joi.number().positive().precision(2).optional().messages({
+      "number.positive": "Original price must be a positive number",
+    }),
+    stock: Joi.number().integer().min(0).required().messages({
+      "number.integer": "Stock must be an integer",
+      "number.min": "Stock cannot be negative",
+      "any.required": "Stock is required",
+    }),
+    featured: Joi.boolean().optional(),
+    tags: Joi.array().items(Joi.string().trim()).max(20).optional().messages({
+      "array.max": "Maximum 20 tags allowed",
+    }),
+    materials: Joi.array()
+      .items(Joi.string().trim())
+      .min(1)
+      .max(15)
+      .required()
+      .messages({
+        "array.min": "At least one material is required",
+        "array.max": "Maximum 15 materials allowed",
+        "any.required": "Materials are required",
+      }),
+    careInstructions: Joi.string().trim().max(1000).optional().messages({
+      "string.max": "Care instructions cannot exceed 1000 characters",
+    }),
+    dimensions: Joi.object({
+      length: Joi.number().positive().optional(),
+      width: Joi.number().positive().optional(),
+      height: Joi.number().positive().optional(),
+      weight: Joi.number().positive().optional(),
+    }).optional(),
+  }),
+
+  update: Joi.object({
+    name: Joi.string().trim().min(1).max(200).optional().messages({
+      "string.empty": "Decor name cannot be empty",
+      "string.max": "Decor name cannot exceed 200 characters",
+    }),
+    description: Joi.string().trim().min(1).max(2000).optional().messages({
+      "string.empty": "Description cannot be empty",
+      "string.max": "Description cannot exceed 2000 characters",
+    }),
+    category: Joi.string().hex().length(24).optional().messages({
+      "string.hex": "Invalid category ID",
+      "string.length": "Invalid category ID",
+    }),
+    price: Joi.number().positive().precision(2).optional().messages({
+      "number.positive": "Price must be a positive number",
+    }),
+    originalPrice: Joi.number()
+      .positive()
+      .precision(2)
+      .allow(null)
+      .optional()
+      .messages({
+        "number.positive": "Original price must be a positive number",
+      }),
+    stock: Joi.number().integer().min(0).optional().messages({
+      "number.integer": "Stock must be an integer",
+      "number.min": "Stock cannot be negative",
+    }),
+    featured: Joi.boolean().optional(),
+    status: Joi.string()
+      .valid("active", "inactive", "out_of_stock", "discontinued")
+      .optional(),
+    tags: Joi.array().items(Joi.string().trim()).max(20).optional().messages({
+      "array.max": "Maximum 20 tags allowed",
+    }),
+    materials: Joi.array()
+      .items(Joi.string().trim())
+      .min(1)
+      .max(15)
+      .optional()
+      .messages({
+        "array.min": "At least one material is required",
+        "array.max": "Maximum 15 materials allowed",
+      }),
+    careInstructions: Joi.string()
+      .trim()
+      .max(1000)
+      .allow("")
+      .optional()
+      .messages({
+        "string.max": "Care instructions cannot exceed 1000 characters",
+      }),
+    dimensions: Joi.object({
+      length: Joi.number().positive().allow(null).optional(),
+      width: Joi.number().positive().allow(null).optional(),
+      height: Joi.number().positive().allow(null).optional(),
+      weight: Joi.number().positive().allow(null).optional(),
+    }).optional(),
+  }),
+};
+
+export const querySchemas = {
+  pagination: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(10),
+    sort: Joi.string()
+      .valid(
+        "name",
+        "-name",
+        "price",
+        "-price",
+        "createdAt",
+        "-createdAt",
+        "rating",
+        "-rating"
+      )
+      .optional(),
+    search: Joi.string().trim().optional(),
+    category: Joi.string().hex().length(24).optional(),
+    status: Joi.string()
+      .valid("active", "inactive", "out_of_stock", "discontinued")
+      .optional(),
+    featured: Joi.boolean().optional(),
+    minPrice: Joi.number().min(0).optional(),
+    maxPrice: Joi.number().min(0).optional(),
+  }),
+};

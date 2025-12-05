@@ -1,0 +1,90 @@
+import { Router } from "express";
+import {
+  createDecor,
+  getAllDecors,
+  getActiveDecors,
+  getFeaturedDecors,
+  getDecorById,
+  updateDecor,
+  deleteDecor,
+  updateStock,
+  getDecorStats,
+  searchDecors,
+} from "../controllers/decorController";
+import { authenticate, adminOnly, optionalAuth } from "../middlewares/auth";
+import {
+  validate,
+  validateQuery,
+  validateObjectId,
+} from "../middlewares/validation";
+import { decorSchemas, querySchemas } from "../middlewares/validation";
+import Joi from "joi";
+
+const router = Router();
+
+// Public routes
+router.get("/", validateQuery(querySchemas.pagination), getActiveDecors);
+router.get("/active", validateQuery(querySchemas.pagination), getActiveDecors);
+
+router.get("/featured", getFeaturedDecors);
+
+router.get(
+  "/search",
+  validateQuery(
+    Joi.object({
+      q: Joi.string().trim().optional(),
+      category: Joi.string().hex().length(24).optional(),
+      minPrice: Joi.number().min(0).optional(),
+      maxPrice: Joi.number().min(0).optional(),
+      materials: Joi.string().optional(),
+      tags: Joi.string().optional(),
+      sortBy: Joi.string()
+        .valid("name", "price", "createdAt", "rating")
+        .optional(),
+      order: Joi.string().valid("asc", "desc").optional(),
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(50).default(12),
+    })
+  ),
+  searchDecors
+);
+
+// Routes with optional authentication
+router.get("/:id", optionalAuth, validateObjectId("id"), getDecorById);
+
+// Protected routes (admin only)
+router.use(authenticate);
+router.use(adminOnly);
+
+// Admin routes
+router.get("/admin/stats", getDecorStats);
+
+router.get("/admin/all", validateQuery(querySchemas.pagination), getAllDecors);
+
+// Create new decor
+router.post("/", validate(decorSchemas.create), createDecor);
+
+// Update decor
+router.put(
+  "/:id",
+  validateObjectId("id"),
+  validate(decorSchemas.update),
+  updateDecor
+);
+
+// Update stock
+router.patch(
+  "/:id/stock",
+  validateObjectId("id"),
+  validate(
+    Joi.object({
+      stock: Joi.number().integer().min(0).required(),
+    })
+  ),
+  updateStock
+);
+
+// Delete decor
+router.delete("/:id", validateObjectId("id"), deleteDecor);
+
+export default router;
