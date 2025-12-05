@@ -49,20 +49,21 @@ class Server {
 
     // CORS configuration
     const allowedOrigins = process.env.FRONTEND_URL?.split(",") || [];
-    
+
     // Add localhost origins for development when working with deployed backend
     const developmentOrigins = [
       "http://localhost:3000",
       "http://localhost:5173",
       "http://127.0.0.1:3000",
-      "http://127.0.0.1:5173"
+      "http://127.0.0.1:5173",
     ];
-    
+
     this.app.use(
       cors({
-        origin: process.env.NODE_ENV === "production" 
-          ? [...allowedOrigins, ...developmentOrigins]
-          : developmentOrigins,
+        origin:
+          process.env.NODE_ENV === "production"
+            ? [...allowedOrigins, ...developmentOrigins]
+            : developmentOrigins,
         credentials: true,
         optionsSuccessStatus: 200,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
